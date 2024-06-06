@@ -1,0 +1,5 @@
+robot_hw_node:
+  ros__parameters:
+    robot_hw:
+      loop_frequency: 500.0
+      cycle_time_error_threshold: 0.002

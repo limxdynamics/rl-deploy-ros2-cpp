@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="3">
+    <name>robot_controllers</name>
+    <version>0.0.1</version>
+    <description>The robot_controllers packages.</description>
+    <maintainer email="limx@limxdynamics.com">max</maintainer>
+    <license>TODO</license>
+    <author email="limx@limxdynamics.com">max</author>
+    <buildtool_depend>ament_cmake</buildtool_depend>
+    <depend>pluginlib</depend>
+    <depend>realtime_tools</depend>
+    <depend>controller_interface</depend>
+    <depend>hardware_interface</depend>
+    <depend>rclcpp</depend>
+    <depend>rclcpp_lifecycle</depend>
+    <depend>urdf</depend>
+    <depend>geometry_msgs</depend>
+    <build_depend>eigen</build_depend>
+    <depend>pointfoot_sdk_lowlevel</depend>
+    <export>
+      <build_type>ament_cmake</build_type>
+      <controller_interface plugin="${prefix}/robot_controllers_plugin.xml"/>
+    </export>
+</package>
