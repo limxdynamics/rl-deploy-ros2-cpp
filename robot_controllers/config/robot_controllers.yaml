@@ -1,0 +1,4 @@
+robot_hw_node:
+  ros__parameters:
+    robot_controllers:
+      - robot_controllers/PointfootController
