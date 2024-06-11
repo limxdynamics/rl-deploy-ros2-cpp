@@ -19,6 +19,7 @@
                      ros-foxy-control-msgs \
                      ros-foxy-controller-interface \
                      ros-foxy-gazebo-* \
+                     ros-foxy-rviz* \
                      ros-foxy-rqt-gui \
                      ros-foxy-rqt-robot-steering \
                      ros-foxy-plotjuggler* \
@@ -74,15 +75,24 @@
     cd ~/limx_ws/src
     git clone -b feature/foxy https://github.com/limxdynamics/pointfoot-gazebo-ros2.git
     ```
+- 下载可视化工具
+    ```Bash
+    cd ~/limx_ws/src
+    git clone https://github.com/limxdynamics/robot-visualization.git
+    ```
 - 下载RL部署源码：
     ```Bash
     cd ~/limx_ws/src
     git clone -b feature/foxy https://github.com/limxdynamics/rl-deploy-ros2-cpp.git
     ```
+- ```Bash
+    cd ~/limx_ws/src
+    git clone https://github.com/limxdynamics/robot-visualization.git
+    ```
 - 编译工程：
     ```Bash
     cd ~/limx_ws
-    colcon build
+    colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
     ```
 
 - 运行仿真
