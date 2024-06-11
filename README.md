@@ -19,6 +19,7 @@
                      ros-humble-control-msgs \
                      ros-humble-controller-interface \
                      ros-humble-gazebo-* \
+                     ros-humble-rviz* \
                      ros-humble-rqt-gui \
                      ros-humble-rqt-robot-steering \
                      ros-humble-plotjuggler* \
@@ -82,7 +83,7 @@
 - 编译工程：
     ```Bash
     cd ~/limx_ws
-    colcon build
+    colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
     ```
 
 - 运行仿真
