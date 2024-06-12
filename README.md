@@ -4,7 +4,7 @@
 
 ## 1. 部署环境配置
 
-- 安装ROS 2 Foxy：推荐在 Ubuntu 20.04 操作系统上建立基于 ROS 2 Foxy 的算法开发环境。 安装请参考文档： https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html ，选择“ros-foxy-desktop”进行安装。ROS 2 foxy 安装完成后，Bash 终端输入以下 Shell 命令，安装开发环境所依赖的库：
+- 安装ROS 2 Foxy：在 Ubuntu 20.04 操作系统上建立基于 ROS 2 Foxy 的算法开发环境。 安装请参考文档： https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html ，选择“ros-foxy-desktop”进行安装。ROS 2 Foxy 安装完成后，Bash 终端输入以下 Shell 命令，安装开发环境所依赖的库：
 
     ```
     sudo apt update
@@ -69,16 +69,15 @@
     cd ~/limx_ws/src
     git clone https://github.com/limxdynamics/pointfoot-sdk-lowlevel.git
     ```
-
-- 下载Gazebo仿真器：
-    ```Bash
-    cd ~/limx_ws/src
-    git clone -b feature/foxy https://github.com/limxdynamics/pointfoot-gazebo-ros2.git
-    ```
 - 下载可视化工具
     ```Bash
     cd ~/limx_ws/src
     git clone https://github.com/limxdynamics/robot-visualization.git
+    ```
+- 下载Gazebo仿真器：
+    ```Bash
+    cd ~/limx_ws/src
+    git clone -b feature/foxy https://github.com/limxdynamics/pointfoot-gazebo-ros2.git
     ```
 - 下载RL部署源码：
     ```Bash
