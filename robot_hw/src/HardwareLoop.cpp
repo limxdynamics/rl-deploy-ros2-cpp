@@ -264,7 +264,7 @@ void HardwareLoop::update() {
                 cycle_time_error - cycleThreshold_, elapsedTime_.seconds(), cycleThreshold_);
   }
 
-  rclcpp::Time time = rclcpp::Time(0);
+  rclcpp::Time time = rclcpp::Time(0, 0, controller_manager_->get_node_clock_interface()->get_clock()->get_clock_type());
   rclcpp::Duration period = rclcpp::Duration::from_seconds(0.01);
 
   // Input: Get the hardware's state

@@ -90,7 +90,25 @@ struct RobotCfg {
     ObsScales obsScales;           // Observation scaling settings
   };
 
+  // User command configuration settings
+  struct UserCmdCfg {
+    double linVel_x{0.0}; 
+    double linVel_y{0.0}; 
+    double angVel_yaw{0.0}; 
+
+    // Print user command scaling parameters
+    void print() {
+      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "======= Start User Cmd Scales========");
+      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "lin_vel_x: %f", linVel_x);
+      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "lin_vel_y: %f", linVel_y);
+      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "ang_vel_yaw: %f", angVel_yaw);
+      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "=======End User Cmd Scales========\n");
+    }
+  };
+
+
   RlCfg rlCfg;                   // RL configuration settings
+  UserCmdCfg userCmdCfg;         // User command configuration settings
   std::map<std::string, double> initState;  // Initial state settings
   ControlCfg controlCfg;         // Control configuration settings
 
@@ -98,6 +116,7 @@ struct RobotCfg {
   void print() {
     rlCfg.obsScales.print();
     controlCfg.print();
+    userCmdCfg.print();
     RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "clipActions: %f", rlCfg.clipActions);
     RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "clipObs: %f", rlCfg.clipObs);
   }

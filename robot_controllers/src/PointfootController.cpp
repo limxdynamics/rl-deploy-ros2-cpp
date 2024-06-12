@@ -234,6 +234,9 @@ bool PointfootController::loadRLCfg() {
     error += declareAndCheckParameter<double>("ControllerCfg.imu_orientation_offset.yaw", imuOrientationOffset_[0]);
     error += declareAndCheckParameter<double>("ControllerCfg.imu_orientation_offset.pitch", imuOrientationOffset_[1]);
     error += declareAndCheckParameter<double>("ControllerCfg.imu_orientation_offset.roll", imuOrientationOffset_[2]);
+    error += declareAndCheckParameter<double>("ControllerCfg.user_cmd_scales.lin_vel_x", robotCfg_.userCmdCfg.linVel_x);
+    error += declareAndCheckParameter<double>("ControllerCfg.user_cmd_scales.lin_vel_y", robotCfg_.userCmdCfg.linVel_y);
+    error += declareAndCheckParameter<double>("ControllerCfg.user_cmd_scales.ang_vel_yaw", robotCfg_.userCmdCfg.angVel_yaw);
 
     // Log the result of parameter fetching
     if (error != 0) {
@@ -327,9 +330,9 @@ void PointfootController::computeObservation()
   vector_t actions(lastActions_);
 
   // Define command scaler and observation vector
-  matrix_t commandScaler = Eigen::DiagonalMatrix<double, 3>(robotCfg_.rlCfg.obsScales.linVel,
-                                                            robotCfg_.rlCfg.obsScales.linVel,
-                                                            robotCfg_.rlCfg.obsScales.linVel);
+  matrix_t commandScaler = Eigen::DiagonalMatrix<double, 3>(robotCfg_.userCmdCfg.linVel_x,
+                                                            robotCfg_.userCmdCfg.linVel_y,
+                                                            robotCfg_.userCmdCfg.angVel_yaw);
 
   vector_t obs(observationSize_);
   vector3_t scaled_commands = commandScaler * commands_;
@@ -361,13 +364,13 @@ void PointfootController::cmdVelCallback(const geometry_msgs::msg::Twist::Shared
   // Update the commands with the linear and angular velocities from the Twist message.
 
   // Set linear x velocity.
-  commands_(0) = msg->linear.x;
+  commands_(0) = (msg->linear.x > 1.0 ? 1.0 : (msg->linear.x < -1.0 ? -1.0 : msg->linear.x));
 
   // Set linear y velocity.
-  commands_(1) = msg->linear.y;
+  commands_(1) = (msg->linear.y > 1.0 ? 1.0 : (msg->linear.y < -1.0 ? -1.0 : msg->linear.y));
 
   // Set angular z velocity.
-  commands_(2) = msg->angular.z;
+  commands_(2) = (msg->angular.z > 1.0 ? 1.0 : (msg->angular.z < -1.0 ? -1.0 : msg->angular.z));
 }
 
 } // namespace
