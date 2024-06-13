@@ -25,7 +25,7 @@ bool PointfootController::onInit() {
 
   initJointAngles_.resize(initState.size());
 
-  for (int i = 0; i < jointNames_.size(); i++) {
+  for (size_t i = 0; i < jointNames_.size(); i++) {
     initJointAngles_(i) = initState[jointNames_[i]];
   }
 
@@ -48,6 +48,11 @@ bool PointfootController::onInit() {
 }
 
 void PointfootController::onStart() {
+  for (size_t i = 0; i < jointNames_.size(); i++) {
+    defaultJointAngles_[i] = this->getJointStateValue(jointNames_[i], "position");
+    RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "starting hybridJointHandle: %f", defaultJointAngles_[i]);
+  }
+
   standPercent_ += 1 / (standDuration_ * loopFrequency_);
 
   loopCount_ = 0;
@@ -100,7 +105,7 @@ void PointfootController::handleWalkMode() {
     jointVel(i) = this->getJointStateValue(jointNames_[i], "velocity");
   }
 
-  for (int i = 0; i < jointNames_.size(); i++) {
+  for (size_t i = 0; i < jointNames_.size(); i++) {
     double actionMin =
         jointPos(i) - initJointAngles_(i, 0) +
         (robotCfg_.controlCfg.damping * jointVel(i) - robotCfg_.controlCfg.user_torque_limit) / robotCfg_.controlCfg.stiffness;
@@ -125,7 +130,7 @@ void PointfootController::handleWalkMode() {
 // Handle standing mode
 void PointfootController::handleStandMode() {
   if (standPercent_ < 1) {
-    for (int i = 0; i < jointNames_.size(); i++)
+    for (size_t i = 0; i < jointNames_.size(); i++)
     {
       double pos_des = defaultJointAngles_[i] * (1 - standPercent_) + initJointAngles_[i] * standPercent_;
       this->setJointCommandValue(jointNames_[i], "position", pos_des);
@@ -168,7 +173,7 @@ bool PointfootController::loadModel() {
   policyOutputNames_.clear();
   policyInputShapes_.clear();
   policyOutputShapes_.clear();
-  for (int i = 0; i < policySessionPtr_->GetInputCount(); i++) {
+  for (size_t i = 0; i < policySessionPtr_->GetInputCount(); i++) {
     policyInputNames_.push_back(policySessionPtr_->GetInputName(i, allocator));
     policyInputShapes_.push_back(policySessionPtr_->GetInputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape());
     RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "GetInputName: %s", policySessionPtr_->GetInputName(i, allocator));
@@ -182,7 +187,7 @@ bool PointfootController::loadModel() {
     }
     RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "Shape: [%s]", shapeString.c_str());
   }
-  for (int i = 0; i < policySessionPtr_->GetOutputCount(); i++) {
+  for (size_t i = 0; i < policySessionPtr_->GetOutputCount(); i++) {
     policyOutputNames_.push_back(policySessionPtr_->GetOutputName(i, allocator));
     RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "GetOutputName: %s", policySessionPtr_->GetOutputName(i, allocator));
     policyOutputShapes_.push_back(policySessionPtr_->GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape());
@@ -286,7 +291,7 @@ void PointfootController::computeActions() {
                                                                 inputValues.data(), 1, policyOutputNames_.data(),
                                                                 1);
 
-  for (int i = 0; i < actionsSize_; i++) {
+  for (size_t i = 0; i < actionsSize_; i++) {
     actions_[i] = *(outputValues[0].GetTensorMutableData<tensor_element_t>() + i);
   }
 }

@@ -22,6 +22,29 @@ namespace robot_hw {
 HardwareLoop::HardwareLoop(std::unique_ptr<robot_hw::HardwareBase> &hardware)
     : hardware_(hardware.get()), elapsedTime_(0, 0) {
   try {
+    std::vector<float> joint_limits, joint_offset;
+
+    // Get joint limits
+    RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Getting joint limits...");
+    hardware_->getRobot()->getJointLimit(joint_limits);
+    assert(joint_limits.size() == hardware_->getRobot()->getMotorNumber());
+    for (size_t i = 0; i < joint_limits.size(); i++) {
+      RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "limitJointAngles i: %d, angle: %f", i, joint_limits[i]);
+    }
+    hardware_->setLimitJointAngles(joint_limits);
+    RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Get joint limits finished!");
+
+    // Get joint offset
+    RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Getting joint offset...");
+    hardware_->getRobot()->getJointOffset(joint_offset);
+    assert(joint_offset.size() == hardware_->getRobot()->getMotorNumber());
+    for (size_t i = 0; i < joint_offset.size(); i++) {
+      RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "offsetJointAngles  i: %d, angle: %f", i, joint_offset[i]);
+      joint_offset[i] = joint_offset[i] - joint_limits[i];
+    }
+    hardware_->setOffsetJointAngles(joint_offset);
+    RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Get joint offset finished!");
+
     // Create ResourceManager
     auto resource_manager = std::make_unique<hardware_interface::ResourceManager>();
     hardware_interface::ResourceManager* resourceManagerPtr = resource_manager.get();
@@ -119,27 +142,6 @@ bool HardwareLoop::startController(const std::string &controller_name) {
       return false;
     }
   }
-
-  std::vector<float> joint_limits, joint_offset;
-
-  // Get joint limits
-  RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Getting joint limits...");
-  hardware_->getRobot()->getJointLimit(joint_limits);
-  assert(joint_limits.size() == hardware_->getRobot()->getMotorNumber());
-  hardware_->setLimitJointAngles(joint_limits);
-  RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Joint limits retrieved.");
-
-  // Get joint offset
-  RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Getting joint offset...");
-  hardware_->getRobot()->getJointOffset(joint_offset);
-  assert(joint_offset.size() == hardware_->getRobot()->getMotorNumber());
-
-  // Calculate offsets relative to joint limits
-  for (size_t i = 0; i < joint_offset.size(); i++) {
-    joint_offset[i] = joint_offset[i] - joint_limits[i];
-  }
-  hardware_->setOffsetJointAngles(joint_offset);
-  RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Joint offset retrieved.");
 
   // Switch the controllers
   std::vector<std::string> start_controllers = {controller_name};
