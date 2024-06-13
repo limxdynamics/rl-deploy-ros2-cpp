@@ -102,7 +102,7 @@ static void subscribeSensorJoyCallback(const limxsdk::SensorJoyConstPtr& msg) {
     && declareAndCheckParameter("joystick_axes.right_horizon", right_horizon)
     && declareAndCheckParameter("joystick_axes.right_vertical", right_vertical)) {
     static rclcpp::Time lastpub;
-    rclcpp::Time now = hw_loop_->getNode()->now();
+    rclcpp::Time now = rclcpp::Clock().now();
     if (fabs((now - lastpub).seconds()) >= (1.0 / 30)) {
       geometry_msgs::msg::Twist twist;
       twist.linear.x = msg->axes[left_vertical] * 0.5;
@@ -168,7 +168,11 @@ int main(int argc, char* argv[]) {
 
   // Start the controller if "use_gazebo" parameter is true
   if (use_gazebo) {
-    hw_loop_->startController("PointfootController");
+    std::thread controller_thread([]() {
+      std::this_thread::sleep_for(std::chrono::nanoseconds(static_cast<int64_t>(3.0 * 1e9)));
+      hw_loop_->startController("PointfootController");
+    });
+    controller_thread.detach();
   }
 
   // Spin the node to process callbacks and keep it alive
