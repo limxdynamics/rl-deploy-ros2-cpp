@@ -1,4 +1,4 @@
-﻿// Copyright information
+// Copyright information
 //
 // © [2024] LimX Dynamics Technology Co., Ltd. All rights reserved.
 
@@ -21,12 +21,6 @@ namespace robot_hw {
  */
 HardwareBase::HardwareBase(limxsdk::ApiBase* robot) : robot_(robot) {
   jointData_.resize(robot_->getMotorNumber());
-
-  // Resize limitJointAngles_ to match the number of motors, initializing with 0.0
-  limitJointAngles_.resize(robot_->getMotorNumber(), 0.0);  
-
-  // Resize offsetJointAngles_ to match the number of motors, initializing with 0.0
-  offsetJointAngles_.resize(robot_->getMotorNumber(), 0.0); 
 
   // Initializing robot command instance, state buffer and imu buffer
   robotCmd_ = limxsdk::RobotCmd(robot_->getMotorNumber());
@@ -133,7 +127,7 @@ hardware_interface::return_type HardwareBase::read(const rclcpp::Time & /*time*/
   // Reading robot state
   limxsdk::RobotState robotState = *robotStateBuffer_.readFromRT();
   for (int i = 0; i < robot_->getMotorNumber(); ++i) {
-    jointData_[i].pos_ = robotState.q[i] - offsetJointAngles_[i];
+    jointData_[i].pos_ = robotState.q[i];
     jointData_[i].vel_ = robotState.dq[i];
     jointData_[i].tau_ = robotState.tau[i];
   }
@@ -157,7 +151,7 @@ hardware_interface::return_type HardwareBase::write(const rclcpp::Time & /*time*
   // Writing commands to robot
   if (can_publish_cmd_) {
     for (int i = 0; i < robot_->getMotorNumber(); ++i) {
-      robotCmd_.q[i] = static_cast<float>(jointData_[i].posDes_ + offsetJointAngles_[i]);
+      robotCmd_.q[i] = static_cast<float>(jointData_[i].posDes_);
       robotCmd_.dq[i] = static_cast<float>(jointData_[i].velDes_);
       robotCmd_.Kp[i] = static_cast<float>(jointData_[i].kp_);
       robotCmd_.Kd[i] = static_cast<float>(jointData_[i].kd_);

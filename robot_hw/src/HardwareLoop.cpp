@@ -1,4 +1,4 @@
-﻿// Copyright information
+// Copyright information
 //
 // © [2024] LimX Dynamics Technology Co., Ltd. All rights reserved.
 
@@ -22,29 +22,6 @@ namespace robot_hw {
 HardwareLoop::HardwareLoop(std::unique_ptr<robot_hw::HardwareBase> &hardware)
     : hardware_(hardware.get()), elapsedTime_(0, 0) {
   try {
-    std::vector<float> joint_limits, joint_offset;
-
-    // Get joint limits
-    RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Getting joint limits...");
-    hardware_->getRobot()->getJointLimit(joint_limits);
-    assert(joint_limits.size() == hardware_->getRobot()->getMotorNumber());
-    for (size_t i = 0; i < joint_limits.size(); i++) {
-      RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "limitJointAngles i: %d, angle: %f", i, joint_limits[i]);
-    }
-    hardware_->setLimitJointAngles(joint_limits);
-    RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Get joint limits finished!");
-
-    // Get joint offset
-    RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Getting joint offset...");
-    hardware_->getRobot()->getJointOffset(joint_offset);
-    assert(joint_offset.size() == hardware_->getRobot()->getMotorNumber());
-    for (size_t i = 0; i < joint_offset.size(); i++) {
-      RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "offsetJointAngles  i: %d, angle: %f", i, joint_offset[i]);
-      joint_offset[i] = joint_offset[i] - joint_limits[i];
-    }
-    hardware_->setOffsetJointAngles(joint_offset);
-    RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Get joint offset finished!");
-
     // Create ResourceManager
     auto resource_manager = std::make_unique<hardware_interface::ResourceManager>();
     hardware_interface::ResourceManager* resourceManagerPtr = resource_manager.get();
