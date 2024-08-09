@@ -1,4 +1,4 @@
-﻿// Copyright information
+// Copyright information
 //
 // © [2024] LimX Dynamics Technology Co., Ltd. All rights reserved.
 
@@ -67,24 +67,6 @@ public:
   hardware_interface::return_type configure(const hardware_interface::HardwareInfo& info) override;
 
   /**
-   * @brief Sets the joint angle limits.
-   * 
-   * @param limitJointAngles Vector containing the joint angle limits.
-   */
-  void setLimitJointAngles(const std::vector<float>& limitJointAngles) {
-    limitJointAngles_ = limitJointAngles;
-  }
-
-  /**
-   * @brief Sets the joint angle offsets.
-   * 
-   * @param offsetJointAngles Vector containing the joint angle offsets.
-   */
-  void setOffsetJointAngles(const std::vector<float>& offsetJointAngles) {
-    offsetJointAngles_ = offsetJointAngles;
-  }
-
-  /**
    * @brief Retrieves the robot instance.
    * 
    * This function returns a pointer to the `ApiBase` instance representing the robot.
@@ -104,9 +86,6 @@ protected:
   hardware_interface::HardwareInfo info_; ///< Hardware information.
   std::vector<MotorData> jointData_; ///< Data for each joint.
   ImuData imuData_{}; ///< IMU data.
-
-  std::vector<float> limitJointAngles_;  ///< Vector storing joint angle limits.
-  std::vector<float> offsetJointAngles_;  ///< Vector storing joint angle offsets.
   
   realtime_tools::RealtimeBuffer<limxsdk::RobotState> robotStateBuffer_; ///< Buffer for robot state.
   realtime_tools::RealtimeBuffer<limxsdk::ImuData> imuDataBuffer_; ///< Buffer for IMU data.
