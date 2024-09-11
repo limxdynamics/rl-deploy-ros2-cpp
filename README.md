@@ -54,46 +54,72 @@
 可以按照以下步骤，创建一个RL部署开发工作空间：
 
 - 打开一个Bash终端。
+
 - 创建一个新目录来存放工作空间。例如，可以在用户的主目录下创建一个名为“limx_ws”的目录：
     ```Bash
     mkdir -p ~/limx_ws/src
     ```
+    
 - 下载机器人模型描述文件
     ```Bash
     cd ~/limx_ws/src
     git clone https://github.com/limxdynamics/robot-description.git
     ```
+    
 - 下载运动控制开发接口：
 
     ```Bash
     cd ~/limx_ws/src
     git clone https://github.com/limxdynamics/pointfoot-sdk-lowlevel.git
     ```
+    
 - 下载可视化工具
     ```Bash
     cd ~/limx_ws/src
     git clone https://github.com/limxdynamics/robot-visualization.git
     ```
+    
 - 下载Gazebo仿真器：
     ```Bash
     cd ~/limx_ws/src
     git clone -b feature/foxy https://github.com/limxdynamics/pointfoot-gazebo-ros2.git
     ```
+    
 - 下载RL部署源码：
     ```Bash
     cd ~/limx_ws/src
     git clone -b feature/foxy https://github.com/limxdynamics/rl-deploy-ros2-cpp.git
     ```
+    
 - ```Bash
     cd ~/limx_ws/src
     git clone https://github.com/limxdynamics/robot-visualization.git
     ```
+    
 - 编译工程：
     ```Bash
     cd ~/limx_ws
     colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
     ```
 
+- 选择机器人类型
+
+  - 通过 Shell 命令 `tree -L 1 src/robot-description/pointfoot ` 列出可用的机器人类型：
+  
+    ```
+    src/robot-description/pointfoot
+    ├── PF_P441A
+    ├── PF_P441B
+    ├── PF_P441C
+    └── PF_P441C2
+    ```
+  
+  - 以 `PF_P441A` 为例，设置机器人类型：
+  
+    ```
+    echo 'export ROBOT_TYPE=PF_P441A' >> ~/.bashrc && source ~/.bashrc
+    ```
+  
 - 运行仿真
 
   ```
