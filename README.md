@@ -90,6 +90,24 @@
     colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
     ```
 
+- 选择机器人类型
+
+  - 通过 Shell 命令 `tree -L 1 src/robot-description/pointfoot ` 列出可用的机器人类型：
+  
+    ```
+    src/robot-description/pointfoot
+    ├── PF_P441A
+    ├── PF_P441B
+    ├── PF_P441C
+    └── PF_P441C2
+    ```
+  
+  - 以 `PF_P441A` 为例，设置机器人类型：
+  
+    ```
+    echo 'export ROBOT_TYPE=PF_P441A' >> ~/.bashrc && source ~/.bashrc
+    ```
+  
 - 运行仿真
 
   ```
