@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file PointfootHWNode.cpp
  *
  * © [2024] LimX Dynamics Technology Co., Ltd. All rights reserved.
@@ -79,9 +79,9 @@ static void subscribeDiagnosticValueCallback(const limxsdk::DiagnosticValueConst
  */
 static void subscribeSensorJoyCallback(const limxsdk::SensorJoyConstPtr& msg) {
   // Logic for starting controller
-  int BTN_L1, BTN_A, BTN_X;
-  if (declareAndCheckParameter("joystick_buttons.L1", BTN_L1) && declareAndCheckParameter("joystick_buttons.A", BTN_A)) {
-    if (msg->buttons[BTN_L1] == 1 && msg->buttons[BTN_A] == 1) {
+  int BTN_L1, BTN_Y, BTN_X;
+  if (declareAndCheckParameter("joystick_buttons.L1", BTN_L1) && declareAndCheckParameter("joystick_buttons.Y", BTN_Y)) {
+    if (msg->buttons[BTN_L1] == 1 && msg->buttons[BTN_Y] == 1) {
       hw_loop_->startController("PointfootController");
     }
   }
