@@ -42,13 +42,17 @@ int PointfootHardware::parseJointIndex(const std::string& jointName) {
     joint_index = 1; // Hip joint
   } else if (jointName.find("knee") != std::string::npos) {
     joint_index = 2; // Knee joint
+  } else if (jointName.find("wheel") != std::string::npos) {
+    joint_index = 3; // wheel joint
+  } else if (jointName.find("ankle") != std::string::npos) {
+    joint_index = 3; // ankle joint
   } else {
     RCLCPP_FATAL(rclcpp::get_logger("PointfootHardware"), "parseJointIndex fail!"); // Log fatal error if joint cannot be determined
     return -1;
   }
 
   // Calculate and return the unique joint index
-  return leg_index * 3 + joint_index;
+  return leg_index * robot_->getMotorNumber() / 2 + joint_index;
 }
 
 }  // namespace robot_hw
