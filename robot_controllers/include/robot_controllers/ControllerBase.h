@@ -124,6 +124,11 @@ protected:
   std::map<std::string, hardware_interface::LoanedStateInterface*> state_interfaces_map_; ///< Map of state interfaces.
   std::map<std::string, hardware_interface::LoanedCommandInterface*> command_interfaces_map_; ///< Map of command interfaces.
   std::vector<std::string> jointNames_; ///< Vector of joint names.
+
+  std::string robot_type_;      // Type of the robot (e.g., point foot, wheel foot, sole foot)
+  bool is_point_foot_{false};   // Indicates if the robot has a point foot configuration
+  bool is_wheel_foot_{false};   // Indicates if the robot has a wheel foot configuration
+  bool is_sole_foot_{false};    // Indicates if the robot has a sole foot configuration
 };
 
 /**

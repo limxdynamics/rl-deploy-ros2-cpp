@@ -106,24 +106,40 @@ void PointfootController::handleWalkMode() {
   }
 
   for (size_t i = 0; i < jointNames_.size(); i++) {
-    double actionMin =
-        jointPos(i) - initJointAngles_(i, 0) +
-        (robotCfg_.controlCfg.damping * jointVel(i) - robotCfg_.controlCfg.user_torque_limit) / robotCfg_.controlCfg.stiffness;
-    double actionMax =
-        jointPos(i) - initJointAngles_(i, 0) +
-        (robotCfg_.controlCfg.damping * jointVel(i) + robotCfg_.controlCfg.user_torque_limit) / robotCfg_.controlCfg.stiffness;
-    actions_[i] = std::max(actionMin / robotCfg_.controlCfg.action_scale_pos,
-                            std::min(actionMax / robotCfg_.controlCfg.action_scale_pos, (double)actions_[i]));
-    double pos_des = actions_[i] * robotCfg_.controlCfg.action_scale_pos + initJointAngles_(i, 0);
+    if (is_point_foot_ || (i + 1) % 4 != 0) {
+      double actionMin =
+          jointPos(i) - initJointAngles_(i, 0) +
+          (robotCfg_.controlCfg.damping * jointVel(i) - robotCfg_.controlCfg.user_torque_limit) / robotCfg_.controlCfg.stiffness;
+      double actionMax =
+          jointPos(i) - initJointAngles_(i, 0) +
+          (robotCfg_.controlCfg.damping * jointVel(i) + robotCfg_.controlCfg.user_torque_limit) / robotCfg_.controlCfg.stiffness;
+      actions_[i] = std::max(actionMin / robotCfg_.controlCfg.action_scale_pos,
+                              std::min(actionMax / robotCfg_.controlCfg.action_scale_pos, (double)actions_[i]));
+      double pos_des = actions_[i] * robotCfg_.controlCfg.action_scale_pos + initJointAngles_(i, 0);
 
-    this->setJointCommandValue(jointNames_[i], "position", pos_des);
-    this->setJointCommandValue(jointNames_[i], "velocity", 0);
-    this->setJointCommandValue(jointNames_[i], "kp", robotCfg_.controlCfg.stiffness);
-    this->setJointCommandValue(jointNames_[i], "kd", robotCfg_.controlCfg.damping);
-    this->setJointCommandValue(jointNames_[i], "effort", 0);
-    this->setJointCommandValue(jointNames_[i], "mode", 2);
+      this->setJointCommandValue(jointNames_[i], "position", pos_des);
+      this->setJointCommandValue(jointNames_[i], "velocity", 0);
+      this->setJointCommandValue(jointNames_[i], "kp", robotCfg_.controlCfg.stiffness);
+      this->setJointCommandValue(jointNames_[i], "kd", robotCfg_.controlCfg.damping);
+      this->setJointCommandValue(jointNames_[i], "effort", 0);
+      this->setJointCommandValue(jointNames_[i], "mode", 2);
 
-    lastActions_(i, 0) = actions_[i];
+      lastActions_(i, 0) = actions_[i];
+    } else if (is_wheel_foot_) {
+      double actionMin = (jointVel(i) - wheelJointTorqueLimit_ / wheelJointDamping_);
+      double actionMax = (jointVel(i) + wheelJointTorqueLimit_ / wheelJointDamping_);
+      lastActions_(i, 0) = actions_[i];
+      actions_[i] = std::max(actionMin / wheelJointDamping_,
+                    std::min(actionMax / wheelJointDamping_, (double) actions_[i]));
+      double velocity_des = actions_[i] * wheelJointDamping_;
+
+      this->setJointCommandValue(jointNames_[i], "position", 0);
+      this->setJointCommandValue(jointNames_[i], "velocity", velocity_des);
+      this->setJointCommandValue(jointNames_[i], "kp", 0);
+      this->setJointCommandValue(jointNames_[i], "kd", wheelJointDamping_);
+      this->setJointCommandValue(jointNames_[i], "effort", 0);
+      this->setJointCommandValue(jointNames_[i], "mode", 2);
+    }
   }
 }
 
@@ -243,6 +259,14 @@ bool PointfootController::loadRLCfg() {
     error += declareAndCheckParameter<double>("ControllerCfg.user_cmd_scales.lin_vel_y", robotCfg_.userCmdCfg.linVel_y);
     error += declareAndCheckParameter<double>("ControllerCfg.user_cmd_scales.ang_vel_yaw", robotCfg_.userCmdCfg.angVel_yaw);
 
+    if (is_wheel_foot_) {
+      jointPosIdxs_ = {0, 1, 2, 4, 5, 6};
+      error += declareAndCheckParameter<double>("ControllerCfg.init_state.default_joint_angle.wheel_R_Joint", initState["wheel_R_Joint"]);
+      error += declareAndCheckParameter<double>("ControllerCfg.init_state.default_joint_angle.wheel_L_Joint", initState["wheel_L_Joint"]);
+      error += declareAndCheckParameter<double>("ControllerCfg.control.wheel_joint_damping", wheelJointDamping_);
+      error += declareAndCheckParameter<double>("ControllerCfg.control.wheel_joint_torque_limit", wheelJointTorqueLimit_);
+    }
+
     // Log the result of parameter fetching
     if (error != 0) {
       RCLCPP_ERROR(rclcpp::get_logger("PointfootController"), "Some parameters could not be retrieved. Number of errors: %d", error);
@@ -341,10 +365,25 @@ void PointfootController::computeObservation()
 
   vector_t obs(observationSize_);
   vector3_t scaled_commands = commandScaler * commands_;
+
+  // Populate observation vector
+  vector_t jointPos_value = (jointPos - initJointAngles_) * robotCfg_.rlCfg.obsScales.dofPos;
+  vector_t jointPos_input;
+  // In WF, jointPos does not include wheel speed, index(3, 7) needs to be removed
+  if (is_wheel_foot_) {
+    jointPos_input.resize(jointPosIdxs_.size());
+    for (int i = 0; i < jointPosIdxs_.size(); i++){
+      jointPos_input(i) = jointPos_value(jointPosIdxs_[i]);
+    }
+  }
+  else {
+    jointPos_input = jointPos_value;
+  }
+
   // Populate observation vector
   obs << baseAngVel * robotCfg_.rlCfg.obsScales.angVel,
       projectedGravity,
-      (jointPos - initJointAngles_) * robotCfg_.rlCfg.obsScales.dofPos,
+      jointPos_input,
       jointVel * robotCfg_.rlCfg.obsScales.dofVel,
       actions,
       scaled_commands;

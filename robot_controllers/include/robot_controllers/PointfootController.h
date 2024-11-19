@@ -6,6 +6,7 @@
 #define _LIMX_POINTFOOT_CONTROLLER_H_
 
 #include <onnxruntime_cxx_api.h>
+#include <vector>
 #include <Eigen/Geometry>
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -210,6 +211,9 @@ private:
   // Declaration of the subscription to the geometry_msgs::msg::Twist topic.
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   std::shared_ptr<rclcpp::Node> cmd_vel_node_;
+
+  double wheelJointDamping_, wheelJointTorqueLimit_;
+  std::vector<int> jointPosIdxs_;
 };
 
 } // namespace robot_controllers
