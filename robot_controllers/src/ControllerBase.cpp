@@ -9,6 +9,25 @@
 namespace robot_controllers {
 
 controller_interface::CallbackReturn ControllerBase::on_init() {
+  // Retrieve the robot type from the environment variable "ROBOT_TYPE"
+  const char* value = ::getenv("ROBOT_TYPE");
+  if (value && strlen(value) > 0) {
+    robot_type_ = std::string(value);
+  } else {
+    RCLCPP_FATAL(rclcpp::get_logger("ControllerBase"), "Error: Please set the ROBOT_TYPE using 'export ROBOT_TYPE=<robot_type>'.");
+    abort();
+  }
+
+  // Determine the specific robot configuration based on the robot type
+  is_point_foot_ = (robot_type_.find("PF") != std::string::npos);
+  is_wheel_foot_ = (robot_type_.find("WF") != std::string::npos);
+  is_sole_foot_  = (robot_type_.find("SF") != std::string::npos);
+
+  auto ret = controller_interface::ControllerInterface::init(controller_name);
+  if (ret != controller_interface::return_type::OK) {
+    return ret;
+  }
+
   // Declare parameters
   if (!get_node()->has_parameter("ControllerCfg.joint_names")) {
     get_node()->declare_parameter<std::vector<std::string>>("ControllerCfg.joint_names", jointNames_);
