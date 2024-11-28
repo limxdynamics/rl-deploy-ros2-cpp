@@ -91,6 +91,7 @@
 - 编译工程：
     ```Bash
     cd ~/limx_ws
+    source /opt/ros/iron/setup.bash
     colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
     ```
 
@@ -115,6 +116,7 @@
 - 运行仿真
 
   ```
+  source /opt/ros/iron/setup.bash
   source install/setup.bash
   ros2 launch robot_hw pointfoot_hw_sim.launch.py
   ```
