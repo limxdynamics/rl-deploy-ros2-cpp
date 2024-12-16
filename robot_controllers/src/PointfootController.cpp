@@ -139,6 +139,20 @@ void PointfootController::handleWalkMode() {
       this->setJointCommandValue(jointNames_[i], "kd", wheelJointDamping_);
       this->setJointCommandValue(jointNames_[i], "effort", 0);
       this->setJointCommandValue(jointNames_[i], "mode", 2);
+    } else if (is_sole_foot_) {
+      double actionMin = (jointVel(i) - ankleJointTorqueLimit_ / ankleJointDamping_);
+      double actionMax = (jointVel(i) + ankleJointTorqueLimit_ / ankleJointDamping_);
+      lastActions_(i, 0) = actions_[i];
+      actions_[i] = std::max(actionMin / ankleJointDamping_,
+                    std::min(actionMax / ankleJointDamping_, (double) actions_[i]));
+      double velocity_des = actions_[i] * ankleJointDamping_;
+
+      this->setJointCommandValue(jointNames_[i], "position", 0);
+      this->setJointCommandValue(jointNames_[i], "velocity", velocity_des);
+      this->setJointCommandValue(jointNames_[i], "kp", 0);
+      this->setJointCommandValue(jointNames_[i], "kd", ankleJointDamping_);
+      this->setJointCommandValue(jointNames_[i], "effort", 0);
+      this->setJointCommandValue(jointNames_[i], "mode", 2);
     }
   }
 }
@@ -265,6 +279,11 @@ bool PointfootController::loadRLCfg() {
       error += declareAndCheckParameter<double>("ControllerCfg.init_state.default_joint_angle.wheel_L_Joint", initState["wheel_L_Joint"]);
       error += declareAndCheckParameter<double>("ControllerCfg.control.wheel_joint_damping", wheelJointDamping_);
       error += declareAndCheckParameter<double>("ControllerCfg.control.wheel_joint_torque_limit", wheelJointTorqueLimit_);
+    } else if (is_sole_foot_) {
+      error += declareAndCheckParameter<double>("ControllerCfg.init_state.default_joint_angle.ankle_R_Joint", initState["ankle_R_Joint"]);
+      error += declareAndCheckParameter<double>("ControllerCfg.init_state.default_joint_angle.ankle_L_Joint", initState["ankle_L_Joint"]);
+      error += declareAndCheckParameter<double>("ControllerCfg.control.ankle_joint_damping", ankleJointDamping_);
+      error += declareAndCheckParameter<double>("ControllerCfg.control.ankle_joint_torque_limit", ankleJointTorqueLimit_);
     }
 
     // Log the result of parameter fetching

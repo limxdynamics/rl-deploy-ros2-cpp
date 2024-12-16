@@ -212,7 +212,7 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   std::shared_ptr<rclcpp::Node> cmd_vel_node_;
 
-  double wheelJointDamping_, wheelJointTorqueLimit_;
+  double wheelJointDamping_, wheelJointTorqueLimit_, ankleJointDamping_, ankleJointTorqueLimit_;
   std::vector<int> jointPosIdxs_;
 };
 
