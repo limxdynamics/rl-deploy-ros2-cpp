@@ -23,11 +23,6 @@ controller_interface::CallbackReturn ControllerBase::on_init() {
   is_wheel_foot_ = (robot_type_.find("WF") != std::string::npos);
   is_sole_foot_  = (robot_type_.find("SF") != std::string::npos);
 
-  auto ret = controller_interface::ControllerInterface::init(controller_name);
-  if (ret != controller_interface::return_type::OK) {
-    return ret;
-  }
-
   // Declare parameters
   if (!get_node()->has_parameter("ControllerCfg.joint_names")) {
     get_node()->declare_parameter<std::vector<std::string>>("ControllerCfg.joint_names", jointNames_);
