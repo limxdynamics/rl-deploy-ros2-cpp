@@ -28,8 +28,9 @@ public:
    * @brief Constructor for HardwareLoop.
    * 
    * @param hardware Unique pointer to the robot hardware base.
+   * @param controller_name Name of the controller to load.
    */
-  HardwareLoop(std::unique_ptr<robot_hw::HardwareBase>& hardware);
+  HardwareLoop(std::unique_ptr<robot_hw::HardwareBase>& hardware, const std::string& controller_name);
 
   /**
    * @brief Destructor for HardwareLoop.

@@ -32,7 +32,7 @@ robot_hw_node:
         wheel_joint_torque_limit: 40.0
         action_scale_pos: 0.5
         decimation: 10
-        user_torque_limit: 60.0
+        user_torque_limit: 80.0
 
       normalization:
         clip_scales:

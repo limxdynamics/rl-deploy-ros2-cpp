@@ -9,20 +9,6 @@
 namespace robot_controllers {
 
 controller_interface::CallbackReturn ControllerBase::on_init() {
-  // Retrieve the robot type from the environment variable "ROBOT_TYPE"
-  const char* value = ::getenv("ROBOT_TYPE");
-  if (value && strlen(value) > 0) {
-    robot_type_ = std::string(value);
-  } else {
-    RCLCPP_FATAL(rclcpp::get_logger("ControllerBase"), "Error: Please set the ROBOT_TYPE using 'export ROBOT_TYPE=<robot_type>'.");
-    abort();
-  }
-
-  // Determine the specific robot configuration based on the robot type
-  is_point_foot_ = (robot_type_.find("PF") != std::string::npos);
-  is_wheel_foot_ = (robot_type_.find("WF") != std::string::npos);
-  is_sole_foot_  = (robot_type_.find("SF") != std::string::npos);
-
   // Declare parameters
   if (!get_node()->has_parameter("ControllerCfg.joint_names")) {
     get_node()->declare_parameter<std::vector<std::string>>("ControllerCfg.joint_names", jointNames_);
@@ -97,6 +83,7 @@ controller_interface::InterfaceConfiguration ControllerBase::state_interface_con
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ControllerBase::on_activate(
     const rclcpp_lifecycle::State &previous_state) {
   controller_interface::ControllerInterface::on_activate(previous_state);
+
   command_interfaces_map_.clear();
   state_interfaces_map_.clear();
   for (auto &interface : command_interfaces_) {
@@ -113,9 +100,8 @@ rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn Contro
 
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn ControllerBase::on_deactivate(
     const rclcpp_lifecycle::State &previous_state) {
-
   this->onStop();
-  
+
   controller_interface::ControllerInterface::on_deactivate(previous_state);
 
   return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
