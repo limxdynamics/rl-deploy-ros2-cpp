@@ -1,8 +1,20 @@
 <library path="robot_controllers">
   <class name="robot_controllers/PointfootController" type="robot_controllers::PointfootController" 
-  base_class_type="controller_interface::ControllerInterface">
-  <description>
-    The PointfootController
-  </description>
+    base_class_type="controller_interface::ControllerInterface">
+    <description>
+      The PointfootController
+    </description>
+  </class>
+  <class name="robot_controllers/WheelfootController" type="robot_controllers::WheelfootController" 
+    base_class_type="controller_interface::ControllerInterface">
+    <description>
+      The WheelfootController
+    </description>
+  </class>
+  <class name="robot_controllers/SolefootController" type="robot_controllers::SolefootController" 
+    base_class_type="controller_interface::ControllerInterface">
+    <description>
+      The SolefootController
+    </description>
   </class>
 </library>

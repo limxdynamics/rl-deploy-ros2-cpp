@@ -9,6 +9,9 @@
 #include "robot_hw/PointfootHardware.h"
 #include "robot_hw/HardwareLoop.h"
 
+// Controller name
+static std::string controller_name_ = "";
+
 // Publisher for sending velocity commands to the robot
 static rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_ = nullptr;
 
@@ -57,14 +60,14 @@ static void subscribeDiagnosticValueCallback(const limxsdk::DiagnosticValueConst
   // Check if the diagnostic message pertains to EtherCAT
   if (msg->name == "ethercat" && msg->level == limxsdk::DiagnosticValue::ERROR) {
     RCLCPP_FATAL(rclcpp::get_logger("PointfootHardwareNode"), "Ethercat code: %d, msg: %s", msg->code, msg->message.c_str());
-    hw_loop_->stopController("PointfootController");
+    hw_loop_->stopController(controller_name_);
     abort();
   }
 
   // Check if the diagnostic message pertains to IMU
   if (msg->name == "imu" && msg->level == limxsdk::DiagnosticValue::ERROR) {
     RCLCPP_FATAL(rclcpp::get_logger("PointfootHardwareNode"), "IMU code: %d, msg: %s", msg->code, msg->message.c_str());
-    hw_loop_->stopController("PointfootController");
+    hw_loop_->stopController(controller_name_);
     abort();
   }
 }
@@ -82,7 +85,7 @@ static void subscribeSensorJoyCallback(const limxsdk::SensorJoyConstPtr& msg) {
   int BTN_L1, BTN_Y, BTN_X;
   if (declareAndCheckParameter("joystick_buttons.L1", BTN_L1) && declareAndCheckParameter("joystick_buttons.Y", BTN_Y)) {
     if (msg->buttons[BTN_L1] == 1 && msg->buttons[BTN_Y] == 1) {
-      hw_loop_->startController("PointfootController");
+      hw_loop_->startController(controller_name_);
     }
   }
 
@@ -90,7 +93,7 @@ static void subscribeSensorJoyCallback(const limxsdk::SensorJoyConstPtr& msg) {
   if (declareAndCheckParameter("joystick_buttons.L1", BTN_L1) && declareAndCheckParameter("joystick_buttons.X", BTN_X)) {
     if (msg->buttons[BTN_L1] == 1 && msg->buttons[BTN_X] == 1) {
       RCLCPP_FATAL(rclcpp::get_logger("PointfootHardwareNode"), "L1 + X stopping controller!");
-      hw_loop_->stopController("PointfootController");
+      hw_loop_->stopController(controller_name_);
       abort();
     }
   }
@@ -133,6 +136,28 @@ int main(int argc, char* argv[]) {
     robot_ip = argv[1];
   }
 
+  // Retrieve the robot type from the environment variable "ROBOT_TYPE"
+  const char* value = ::getenv("ROBOT_TYPE");
+  if (value && strlen(value) > 0) {
+    // Determine the specific robot configuration based on the robot type
+    std::string robot_type = std::string(value);
+    if(robot_type.find("PF") != std::string::npos) {
+      controller_name_ = "PointfootController";
+    } else if (robot_type.find("WF") != std::string::npos) {
+      controller_name_ = "WheelfootController";
+    } else if (robot_type.find("SF") != std::string::npos) {
+      controller_name_ = "SolefootController";
+    } else {
+      RCLCPP_FATAL(rclcpp::get_logger("PointfootHardwareNode"), "Error: ROBOT_TYPE.");
+      abort();
+    }
+    RCLCPP_WARN(rclcpp::get_logger("PointfootHardwareNode"), "Controller Name: %s", controller_name_.c_str());
+  } else {
+    RCLCPP_FATAL(rclcpp::get_logger("PointfootHardwareNode"), "Error: Please set the ROBOT_TYPE using 'export ROBOT_TYPE=<robot_type>'.");
+    abort();
+  }
+
+
   // Get an instance of the PointFoot robot
   robot_ = limxsdk::PointFoot::getInstance();
 
@@ -148,7 +173,7 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<robot_hw::HardwareBase> hw = std::make_unique<robot_hw::PointfootHardware>();
 
   // Create a HardwareLoop object with the node and hardware
-  hw_loop_ = std::make_shared<robot_hw::HardwareLoop>(hw);
+  hw_loop_ = std::make_shared<robot_hw::HardwareLoop>(hw, controller_name_);
 
   // Start the hardware loop
   hw_loop_->start();
@@ -170,7 +195,7 @@ int main(int argc, char* argv[]) {
   if (use_gazebo) {
     std::thread controller_thread([]() {
       std::this_thread::sleep_for(std::chrono::nanoseconds(static_cast<int64_t>(3.0 * 1e9)));
-      hw_loop_->startController("PointfootController");
+      hw_loop_->startController(controller_name_);
     });
     controller_thread.detach();
   }
