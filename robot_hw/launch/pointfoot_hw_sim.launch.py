@@ -16,7 +16,8 @@ def generate_launch_description():
         sys.exit(1)
 
     pointfoot_gazebo_launch_file = PathJoinSubstitution([FindPackageShare("pointfoot_gazebo"), "launch/empty_world.launch.py"])
-    robot_controllers_model_file = PathJoinSubstitution([FindPackageShare("robot_controllers"), "config/pointfoot/"+ robot_type +"/policy/policy.onnx"])
+    robot_controllers_encoder_file = PathJoinSubstitution([FindPackageShare("robot_controllers"), "config/pointfoot/"+ robot_type +"/policy/encoder.onnx"])
+    robot_controllers_policy_file = PathJoinSubstitution([FindPackageShare("robot_controllers"), "config/pointfoot/"+ robot_type +"/policy/policy.onnx"])
     robot_controllers_pointfoot_params_file = PathJoinSubstitution([FindPackageShare("robot_controllers"), "config/pointfoot/"+ robot_type +"/params.yaml"])
     robot_controllers_file = PathJoinSubstitution([FindPackageShare("robot_controllers"), "config/robot_controllers.yaml"])
     robot_hw_joystick_file = PathJoinSubstitution([FindPackageShare("robot_hw"), "config/joystick.yaml"])
@@ -39,7 +40,8 @@ def generate_launch_description():
             arguments=["127.0.0.1"],
             parameters=[
                 {
-                    "robot_controllers_model_file": robot_controllers_model_file, 
+                    "robot_controllers_policy_file": robot_controllers_policy_file, 
+                    "robot_controllers_encoder_file": robot_controllers_encoder_file, 
                     "use_gazebo": LaunchConfiguration("use_gazebo"),
                 },
                 robot_controllers_pointfoot_params_file, 

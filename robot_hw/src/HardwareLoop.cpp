@@ -19,7 +19,7 @@ namespace robot_hw {
  * 
  * @param hardware A unique pointer to the base hardware class.
  */
-HardwareLoop::HardwareLoop(std::unique_ptr<robot_hw::HardwareBase> &hardware)
+HardwareLoop::HardwareLoop(std::unique_ptr<robot_hw::HardwareBase> &hardware, const std::string& controller_name)
     : hardware_(hardware.get()), elapsedTime_(0, 0) {
   try {
     // Create ResourceManager
@@ -75,18 +75,19 @@ HardwareLoop::HardwareLoop(std::unique_ptr<robot_hw::HardwareBase> &hardware)
     // Load controllers
     for (const auto &controller : controllers) {
       std::size_t pos = controller.rfind("/");
-      std::string controller_name = "";
       if (pos != std::string::npos) {
-        controller_name = controller.substr(pos + 1);
-      }
-      if (controller_manager_->load_controller(controller_name, controller) == nullptr) {
-        RCLCPP_FATAL(rclcpp::get_logger("HardwareLoop"), "Failed to load controller name: %s, type: %s", controller_name.c_str(), controller.c_str());
-        rclcpp::shutdown();
-        return;
-      } else {
-        RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Loaded controller name: %s, type: %s", controller_name.c_str(), controller.c_str());
-        controller_manager_->configure_controller(controller_name);
-        robot_controllers_[controller_name] = controller;
+        if (controller.substr(pos + 1) != controller_name) {
+          continue;
+        }
+        if (controller_manager_->load_controller(controller_name, controller) == nullptr) {
+          RCLCPP_FATAL(rclcpp::get_logger("HardwareLoop"), "Failed to load controller name: %s, type: %s", controller_name.c_str(), controller.c_str());
+          rclcpp::shutdown();
+          return;
+        } else {
+          RCLCPP_INFO(rclcpp::get_logger("HardwareLoop"), "Loaded controller name: %s, type: %s", controller_name.c_str(), controller.c_str());
+          controller_manager_->configure_controller(controller_name);
+          robot_controllers_[controller_name] = controller;
+        }
       }
     }
   } catch (const std::exception &e) {

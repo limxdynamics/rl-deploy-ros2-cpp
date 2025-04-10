@@ -55,14 +55,14 @@ struct RobotCfg {
 
     // Print control configuration settings
     void print() {
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "=======start ControlCfg========");
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "stiffness: %f", stiffness);
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "damping: %f", damping);
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "action_scale_pos: %f", action_scale_pos);
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "action_scale_vel: %f", action_scale_vel);
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "decimation: %d", decimation);
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "user_torque_limit: %f", user_torque_limit);
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "=======end ControlCfg========\n");
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "=======start ControlCfg========");
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "stiffness: %f", stiffness);
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "damping: %f", damping);
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "action_scale_pos: %f", action_scale_pos);
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "action_scale_vel: %f", action_scale_vel);
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "decimation: %d", decimation);
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "user_torque_limit: %f", user_torque_limit);
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "=======end ControlCfg========\n");
     }
   };
 
@@ -77,12 +77,12 @@ struct RobotCfg {
 
       // Print observation scaling parameters
       void print() {
-        RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "=======start ObsScales========");
-        RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "linVel: %f", linVel);
-        RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "angVel: %f", angVel);
-        RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "dofPos: %f", dofPos);
-        RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "dofVel: %f", dofVel);
-        RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "=======end ObsScales========\n");
+        RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "=======start ObsScales========");
+        RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "linVel: %f", linVel);
+        RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "angVel: %f", angVel);
+        RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "dofPos: %f", dofPos);
+        RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "dofVel: %f", dofVel);
+        RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "=======end ObsScales========\n");
       }
     };
 
@@ -99,11 +99,11 @@ struct RobotCfg {
 
     // Print user command scaling parameters
     void print() {
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "======= Start User Cmd Scales========");
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "lin_vel_x: %f", linVel_x);
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "lin_vel_y: %f", linVel_y);
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "ang_vel_yaw: %f", angVel_yaw);
-      RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "=======End User Cmd Scales========\n");
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "======= Start User Cmd Scales========");
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "lin_vel_x: %f", linVel_x);
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "lin_vel_y: %f", linVel_y);
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "ang_vel_yaw: %f", angVel_yaw);
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "=======End User Cmd Scales========\n");
     }
   };
 
@@ -118,17 +118,17 @@ struct RobotCfg {
     rlCfg.obsScales.print();
     controlCfg.print();
     userCmdCfg.print();
-    RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "clipActions: %f", rlCfg.clipActions);
-    RCLCPP_INFO(rclcpp::get_logger("PointfootController"), "clipObs: %f", rlCfg.clipObs);
+    RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "clipActions: %f", rlCfg.clipActions);
+    RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "clipObs: %f", rlCfg.clipObs);
   }
 };
 
 /**
- * @brief Class representing the PointfootController.
+ * @brief Class representing the WheelfootController.
  */
-class CONTROLLER_INTERFACE_PUBLIC PointfootController : public robot_controllers::ControllerBase {
+class CONTROLLER_INTERFACE_PUBLIC WheelfootController : public robot_controllers::ControllerBase {
 public:
-  PointfootController();
+  WheelfootController();
 
   bool onInit() override;
   void onUpdate() override;
@@ -150,9 +150,6 @@ private:
 
   // Compute actions for the controller
   void computeActions();
-
-  // Compute encoder for the controller
-  void computeEncoder();
 
   // Compute observations for the controller
   void computeObservation();
@@ -187,7 +184,6 @@ private:
 
   // ONNX session pointers
   std::unique_ptr<Ort::Session> policySessionPtr_;
-  std::unique_ptr<Ort::Session> encoderSessionPtr_;
 
   // Names and shapes of inputs and outputs for ONNX sessions
   std::vector<std::vector<int64_t>> policyInputShapes_;
@@ -195,30 +191,16 @@ private:
   std::vector<const char *> policyInputNames_;
   std::vector<const char *> policyOutputNames_;
 
-  std::vector<std::vector<int64_t>> encoderInputShapes_;
-  std::vector<std::vector<int64_t>> encoderOutputShapes_;
-  std::vector<const char *> encoderInputNames_;
-  std::vector<const char *> encoderOutputNames_;
-
-  std::vector<tensor_element_t> proprioHistoryVector_;
-  Eigen::Matrix<tensor_element_t, Eigen::Dynamic, 1> proprioHistoryBuffer_;
-
   vector3_t baseLinVel_; // Base linear velocity
   vector3_t basePosition_; // Base position
   vector_t lastActions_; // Last actions
 
   int actionsSize_; // Size of actions
   int observationSize_; // Size of observations
-  int obsHistoryLength_; // Size of history observations
-  int encoderInputSize_, encoderOutputSize_; // Input and output size of encoder
   double imuOrientationOffset_[3]; // IMU orientation offset
 
   std::vector<tensor_element_t> actions_; // Actions
   std::vector<tensor_element_t> observations_; // Observations
-  std::vector<tensor_element_t> encoderOut_;  // Encoder
-
-  double gait_index_{0.0};
-  bool isfirstRecObs_{true};
 
   vector_t defaultJointAngles_; // Default joint angles
   vector_t initJointAngles_;    // Initial joint angles in standard standing pose

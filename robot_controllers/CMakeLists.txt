@@ -29,6 +29,8 @@ find_package(pointfoot_sdk_lowlevel REQUIRED)
 add_library(${PROJECT_NAME} SHARED
   src/ControllerBase.cpp
   src/PointfootController.cpp
+  src/SolefootController.cpp
+  src/WheelfootController.cpp
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
   include 
