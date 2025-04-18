@@ -71,9 +71,13 @@ namespace robot_controllers
     switch (mode_)
     {
     case Mode::STAND:
+      initJointAngles_(1, 0) = -0.9;
+      initJointAngles_(5, 0) = 0.9;
       handleStandMode();
       break;
     case Mode::WALK:
+      initJointAngles_(1, 0) = -0.0;
+      initJointAngles_(5, 0) = 0.0;
       handleWalkMode();
       break;
     }
@@ -99,6 +103,7 @@ namespace robot_controllers
     if (loopCount_ % robotCfg_.controlCfg.decimation == 0)
     {
       computeObservation();
+      computeEncoder();
       computeActions();
 
       // Limit action range
@@ -166,15 +171,26 @@ namespace robot_controllers
     {
       for (size_t i = 0; i < jointNames_.size(); i++)
       {
-        double pos_des = defaultJointAngles_[i] * (1 - standPercent_) + initJointAngles_[i] * standPercent_;
-        this->setJointCommandValue(jointNames_[i], "position", pos_des);
-        this->setJointCommandValue(jointNames_[i], "velocity", 0);
-        this->setJointCommandValue(jointNames_[i], "kp", robotCfg_.controlCfg.stiffness);
-        this->setJointCommandValue(jointNames_[i], "kd", robotCfg_.controlCfg.damping);
-        this->setJointCommandValue(jointNames_[i], "effort", 0);
-        this->setJointCommandValue(jointNames_[i], "mode", 2);
+        if ((i + 1) % 4 != 0) {
+          double pos_des = defaultJointAngles_[i] * (1 - standPercent_) + initJointAngles_[i] * standPercent_;
+          this->setJointCommandValue(jointNames_[i], "position", pos_des);
+          this->setJointCommandValue(jointNames_[i], "velocity", 0);
+          this->setJointCommandValue(jointNames_[i], "kp", robotCfg_.controlCfg.stiffness);
+          this->setJointCommandValue(jointNames_[i], "kd", robotCfg_.controlCfg.damping);
+          this->setJointCommandValue(jointNames_[i], "effort", 0);
+          this->setJointCommandValue(jointNames_[i], "mode", 2);
+        }
+        else
+        {
+          this->setJointCommandValue(jointNames_[i], "position", 0);
+          this->setJointCommandValue(jointNames_[i], "velocity", 0);
+          this->setJointCommandValue(jointNames_[i], "kp", 0);
+          this->setJointCommandValue(jointNames_[i], "kd", wheelJointDamping_);
+          this->setJointCommandValue(jointNames_[i], "effort", 0);
+          this->setJointCommandValue(jointNames_[i], "mode", 2);
+        }
       }
-      standPercent_ += 1 / (standDuration_ * loopFrequency_);
+      standPercent_ += 3 / (standDuration_ * loopFrequency_);
     }
     else
     {
@@ -187,10 +203,17 @@ namespace robot_controllers
     // Load ONNX models for policy, encoder, and gait generator.
 
     std::string policyModelPath;
+    std::string encoderModelPath;
 
     if (declareAndCheckParameter<std::string>("robot_controllers_policy_file", policyModelPath))
     {
       RCLCPP_ERROR(rclcpp::get_logger("WheelfootController"), "Failed to retrieve policy path from the parameter server!");
+      return false;
+    }
+
+    if (declareAndCheckParameter<std::string>("robot_controllers_encoder_file", encoderModelPath))
+    {
+      RCLCPP_ERROR(rclcpp::get_logger("WheelfootController"), "Failed to retrieve encoder path from the parameter server!");
       return false;
     }
 
@@ -246,6 +269,42 @@ namespace robot_controllers
       RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "Shape: [%s]", shapeString.c_str());
     }
 
+    // Encoder session
+    RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "Loading encoder from: %s", encoderModelPath.c_str());
+    encoderSessionPtr_ = std::make_unique<Ort::Session>(*onnxEnvPrt_, encoderModelPath.c_str(), sessionOptions);
+    encoderInputNames_.clear();
+    encoderOutputNames_.clear();
+    encoderInputShapes_.clear();
+    encoderOutputShapes_.clear();
+    for (size_t i = 0; i < encoderSessionPtr_->GetInputCount(); i++) {
+      encoderInputNames_.push_back(encoderSessionPtr_->GetInputName(i, allocator));
+      encoderInputShapes_.push_back(encoderSessionPtr_->GetInputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape());
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "GetInputName: %s", encoderSessionPtr_->GetInputName(i, allocator));
+      std::vector<int64_t> shape = encoderSessionPtr_->GetInputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape();
+      std::string shapeString;
+      for (size_t j = 0; j < shape.size(); ++j) {
+        shapeString += std::to_string(shape[j]);
+        if (j != shape.size() - 1) {
+          shapeString += ", ";
+        }
+      }
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "Shape: [%s]", shapeString.c_str());
+    }
+    for (size_t i = 0; i < encoderSessionPtr_->GetOutputCount(); i++) {
+      encoderOutputNames_.push_back(encoderSessionPtr_->GetOutputName(i, allocator));
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "GetOutputName: %s", encoderSessionPtr_->GetOutputName(i, allocator));
+      encoderOutputShapes_.push_back(encoderSessionPtr_->GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape());
+      std::vector<int64_t> shape = encoderSessionPtr_->GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape();
+      std::string shapeString;
+      for (size_t j = 0; j < shape.size(); ++j) {
+        shapeString += std::to_string(shape[j]);
+        if (j != shape.size() - 1) {
+          shapeString += ", ";
+        }
+      }
+      RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "Shape: [%s]", shapeString.c_str());
+    }
+
     RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "Successfully loaded ONNX models!");
     return true;
   }
@@ -282,6 +341,8 @@ namespace robot_controllers
       error += declareAndCheckParameter<double>("ControllerCfg.normalization.obs_scales.dof_vel", obsScales.dofVel);
       error += declareAndCheckParameter<int>("ControllerCfg.size.actions_size", actionsSize_);
       error += declareAndCheckParameter<int>("ControllerCfg.size.observations_size", observationSize_);
+      error += declareAndCheckParameter<int>("ControllerCfg.size.obs_history_length", obsHistoryLength_);
+      error += declareAndCheckParameter<int>("ControllerCfg.size.encoder_output_size", encoderOutputSize_);
       error += declareAndCheckParameter<double>("ControllerCfg.imu_orientation_offset.yaw", imuOrientationOffset_[0]);
       error += declareAndCheckParameter<double>("ControllerCfg.imu_orientation_offset.pitch", imuOrientationOffset_[1]);
       error += declareAndCheckParameter<double>("ControllerCfg.imu_orientation_offset.roll", imuOrientationOffset_[2]);
@@ -305,11 +366,15 @@ namespace robot_controllers
         RCLCPP_INFO(rclcpp::get_logger("WheelfootController"), "All parameters retrieved successfully.");
       }
 
+      encoderInputSize_ = obsHistoryLength_ * observationSize_;
+
       robotCfg_.print();
 
       // Resize vectors.
       actions_.resize(actionsSize_);
       observations_.resize(observationSize_);
+      proprioHistoryVector_.resize(observationSize_ * obsHistoryLength_);
+      encoderOut_.resize(encoderOutputSize_);
       lastActions_.resize(actionsSize_);
 
       // Initialize vectors.
@@ -337,9 +402,17 @@ namespace robot_controllers
                                                             OrtMemType::OrtMemTypeDefault);
     std::vector<Ort::Value> inputValues;
     std::vector<tensor_element_t> combined_obs;
+    for (const auto &item : encoderOut_)
+    {
+      combined_obs.push_back(item);
+    }
     for (const auto &item : observations_)
     {
       combined_obs.push_back(item);
+    }
+    for (int i = 0; i < scaled_commands_.size(); i++)
+    {
+      combined_obs.push_back(scaled_commands_[i]);
     }
     inputValues.push_back(
         Ort::Value::CreateTensor<tensor_element_t>(memoryInfo, combined_obs.data(), combined_obs.size(),
@@ -417,8 +490,23 @@ namespace robot_controllers
         projectedGravity,
         jointPos_input,
         jointVel * robotCfg_.rlCfg.obsScales.dofVel,
-        actions,
-        scaled_commands;
+        actions;
+
+    if (isfirstRecObs_)
+    {
+      int64_t inputSize = std::accumulate(encoderInputShapes_[0].begin(), encoderInputShapes_[0].end(),
+                                          static_cast<int64_t>(1), std::multiplies<int64_t>());
+      proprioHistoryBuffer_.resize(inputSize);
+      for (size_t i = 0; i < obsHistoryLength_; i++)
+      {
+        proprioHistoryBuffer_.segment(i * observationSize_,
+                                          observationSize_) = obs.cast<tensor_element_t>();
+      }
+      isfirstRecObs_ = false;
+    }
+    proprioHistoryBuffer_.head(proprioHistoryBuffer_.size() - observationSize_) = proprioHistoryBuffer_.tail(
+        proprioHistoryBuffer_.size() - observationSize_);
+    proprioHistoryBuffer_.tail(observationSize_) = obs.cast<tensor_element_t>();
 
     // Update observation, scaled commands, and proprioceptive history vector
     for (size_t i = 0; i < obs.size(); i++)
@@ -429,6 +517,10 @@ namespace robot_controllers
     {
       scaled_commands_[i] = static_cast<tensor_element_t>(scaled_commands(i));
     }
+    for (size_t i = 0; i < proprioHistoryBuffer_.size(); i++)
+    {
+      proprioHistoryVector_[i] = static_cast<tensor_element_t>(proprioHistoryBuffer_(i));
+    }
 
     // Limit observation range
     double obsMin = -robotCfg_.rlCfg.clipObs;
@@ -436,6 +528,26 @@ namespace robot_controllers
     std::transform(observations_.begin(), observations_.end(), observations_.begin(),
                    [obsMin, obsMax](double x)
                    { return std::max(obsMin, std::min(obsMax, x)); });
+  }
+
+  void WheelfootController::computeEncoder() {
+    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtArenaAllocator,
+                                                            OrtMemType::OrtMemTypeDefault);
+    std::vector<Ort::Value> inputValues;
+    inputValues.push_back(Ort::Value::CreateTensor<tensor_element_t>(memoryInfo, proprioHistoryBuffer_.data(),
+                                                                      proprioHistoryBuffer_.size(),
+                                                                      encoderInputShapes_[0].data(),
+                                                                      encoderInputShapes_[0].size()));
+
+    Ort::RunOptions runOptions;
+    std::vector<Ort::Value> outputValues =
+        encoderSessionPtr_->Run(runOptions, encoderInputNames_.data(), inputValues.data(), 1,
+                                encoderOutputNames_.data(), 1);
+    for (int i = 0; i < encoderOutputSize_; i++)
+    {
+      encoderOut_[i] = *(outputValues[0].GetTensorMutableData<tensor_element_t>() + i);
+    }
+
   }
 
   void WheelfootController::cmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg)

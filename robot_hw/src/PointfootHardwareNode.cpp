@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
   // Start the controller if "use_gazebo" parameter is true
   if (use_gazebo) {
     std::thread controller_thread([]() {
-      std::this_thread::sleep_for(std::chrono::nanoseconds(static_cast<int64_t>(3.0 * 1e9)));
+      std::this_thread::sleep_for(std::chrono::nanoseconds(static_cast<int64_t>(6.0 * 1e9)));
       hw_loop_->startController(controller_name_);
     });
     controller_thread.detach();
