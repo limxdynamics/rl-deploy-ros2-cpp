@@ -187,6 +187,128 @@ Eigen::Matrix<SCALAR_T, 3, 3> getRotationMatrixFromZyxEulerAngles(const Eigen::M
   return rotationMatrix;
 }
 
+// Define scalar and vector types for Eigen
+using vector3_t = Eigen::Matrix<double, 3, 1>;
+using vector_t = Eigen::Matrix<double, Eigen::Dynamic, 1>;
+using matrix_t = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>; // Type alias for matrices
+using tensor_element_t = float; // Type alias for tensor elements
+
+// Utility class to measure time intervals
+class TicToc {
+public:
+  TicToc() {
+    tic();
+  }
+
+  void tic() {
+    start = std::chrono::system_clock::now();
+  }
+
+  double toc() {
+    end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    return elapsed_seconds.count() * 1000;
+  }
+
+private:
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+};
+
+// Structure to hold robot configuration settings
+struct RobotCfg {
+  // Control configuration settings
+  struct ControlCfg {
+    double stiffness{0.0};            // Stiffness parameter
+    double damping{0.0};              // Damping parameter
+    double action_scale_pos{0.0};     // Scaling factor for position action
+    double action_scale_vel{0.0};     // Scaling factor for velocity action
+    int decimation{0};                // Decimation factor
+    double user_torque_limit{0.0};    // User-defined torque limit
+
+    // Print control configuration settings
+    void print() {
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "=======start ControlCfg========");
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "stiffness: %f", stiffness);
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "damping: %f", damping);
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "action_scale_pos: %f", action_scale_pos);
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "action_scale_vel: %f", action_scale_vel);
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "decimation: %d", decimation);
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "user_torque_limit: %f", user_torque_limit);
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "=======end ControlCfg========\n");
+    }
+  };
+
+  // Reinforcement learning configuration settings
+  struct RlCfg {
+    // Observation scaling parameters
+    struct ObsScales {
+      double linVel{0.0};            // Linear velocity scaling
+      double angVel{0.0};            // Angular velocity scaling
+      double dofPos{0.0};            // Degree of freedom position scaling
+      double dofVel{0.0};            // Degree of freedom velocity scaling
+
+      // Print observation scaling parameters
+      void print() {
+        RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "=======start ObsScales========");
+        RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "linVel: %f", linVel);
+        RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "angVel: %f", angVel);
+        RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "dofPos: %f", dofPos);
+        RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "dofVel: %f", dofVel);
+        RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "=======end ObsScales========\n");
+      }
+    };
+
+    double clipActions{0.0};       // Action clipping parameter
+    double clipObs{0.0};           // Observation clipping parameter
+    ObsScales obsScales;           // Observation scaling settings
+  };
+
+  // User command configuration settings
+  struct UserCmdCfg {
+    double linVel_x{0.0}; 
+    double linVel_y{0.0}; 
+    double angVel_yaw{0.0}; 
+
+    // Print user command scaling parameters
+    void print() {
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "======= Start User Cmd Scales========");
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "lin_vel_x: %f", linVel_x);
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "lin_vel_y: %f", linVel_y);
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "ang_vel_yaw: %f", angVel_yaw);
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "=======End User Cmd Scales========\n");
+    }
+  };
+
+  // gait settings
+  struct GaitCfg
+  {
+    double frequencies{0.0};
+    double swing_height{0.0};
+    void print()
+    {
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "=======Start GaitCfg========");
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "frequencies: %f", frequencies);
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "swing_height: %f", swing_height);
+      RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "=======end GaitCfg========\n");
+    }
+  };
+
+  RlCfg rlCfg;                   // RL configuration settings
+  UserCmdCfg userCmdCfg;         // User command configuration settings
+  GaitCfg gaitCfg;               // Gait configuration settings
+  std::map<std::string, double> initState;  // Initial state settings
+  ControlCfg controlCfg;         // Control configuration settings
+
+  // Print robot configuration settings
+  void print() {
+    rlCfg.obsScales.print();
+    controlCfg.print();
+    userCmdCfg.print();
+    gaitCfg.print();
+    RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "clipActions: %f", rlCfg.clipActions);
+    RCLCPP_INFO(rclcpp::get_logger("RobotCfg"), "clipObs: %f", rlCfg.clipObs);
+  }
+};
 } // namespace robot_controllers
 
 #endif // _LIMX_CONTROLLER_BASE_H_

@@ -99,6 +99,7 @@ namespace robot_controllers
     if (loopCount_ % robotCfg_.controlCfg.decimation == 0)
     {
       computeObservation();
+      computeEncoder();
       computeActions();
 
       // Limit action range
@@ -187,10 +188,17 @@ namespace robot_controllers
     // Load ONNX models for policy, encoder, and gait generator.
 
     std::string policyModelPath;
+    std::string encoderModelPath;
 
     if (declareAndCheckParameter<std::string>("robot_controllers_policy_file", policyModelPath))
     {
       RCLCPP_ERROR(rclcpp::get_logger("SolefootController"), "Failed to retrieve policy path from the parameter server!");
+      return false;
+    }
+
+    if (declareAndCheckParameter<std::string>("robot_controllers_encoder_file", encoderModelPath))
+    {
+      RCLCPP_ERROR(rclcpp::get_logger("SolefootController"), "Failed to retrieve encoder path from the parameter server!");
       return false;
     }
 
@@ -246,6 +254,42 @@ namespace robot_controllers
       RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "Shape: [%s]", shapeString.c_str());
     }
 
+    // Encoder session
+    RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "Loading encoder from: %s", encoderModelPath.c_str());
+    encoderSessionPtr_ = std::make_unique<Ort::Session>(*onnxEnvPrt_, encoderModelPath.c_str(), sessionOptions);
+    encoderInputNames_.clear();
+    encoderOutputNames_.clear();
+    encoderInputShapes_.clear();
+    encoderOutputShapes_.clear();
+    for (size_t i = 0; i < encoderSessionPtr_->GetInputCount(); i++) {
+      encoderInputNames_.push_back(encoderSessionPtr_->GetInputName(i, allocator));
+      encoderInputShapes_.push_back(encoderSessionPtr_->GetInputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape());
+      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "GetInputName: %s", encoderSessionPtr_->GetInputName(i, allocator));
+      std::vector<int64_t> shape = encoderSessionPtr_->GetInputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape();
+      std::string shapeString;
+      for (size_t j = 0; j < shape.size(); ++j) {
+        shapeString += std::to_string(shape[j]);
+        if (j != shape.size() - 1) {
+          shapeString += ", ";
+        }
+      }
+      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "Shape: [%s]", shapeString.c_str());
+    }
+    for (size_t i = 0; i < encoderSessionPtr_->GetOutputCount(); i++) {
+      encoderOutputNames_.push_back(encoderSessionPtr_->GetOutputName(i, allocator));
+      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "GetOutputName: %s", encoderSessionPtr_->GetOutputName(i, allocator));
+      encoderOutputShapes_.push_back(encoderSessionPtr_->GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape());
+      std::vector<int64_t> shape = encoderSessionPtr_->GetOutputTypeInfo(i).GetTensorTypeAndShapeInfo().GetShape();
+      std::string shapeString;
+      for (size_t j = 0; j < shape.size(); ++j) {
+        shapeString += std::to_string(shape[j]);
+        if (j != shape.size() - 1) {
+          shapeString += ", ";
+        }
+      }
+      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "Shape: [%s]", shapeString.c_str());
+    }
+
     RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "Successfully loaded ONNX models!");
     return true;
   }
@@ -282,6 +326,9 @@ namespace robot_controllers
       error += declareAndCheckParameter<double>("ControllerCfg.normalization.obs_scales.dof_vel", obsScales.dofVel);
       error += declareAndCheckParameter<int>("ControllerCfg.size.actions_size", actionsSize_);
       error += declareAndCheckParameter<int>("ControllerCfg.size.observations_size", observationSize_);
+      error += declareAndCheckParameter<int>("ControllerCfg.size.obs_history_length", obsHistoryLength_);
+      error += declareAndCheckParameter<int>("ControllerCfg.size.encoder_output_size", encoderOutputSize_);
+      error += declareAndCheckParameter<int>("ControllerCfg.size.commands_size", commandSize_);
       error += declareAndCheckParameter<double>("ControllerCfg.imu_orientation_offset.yaw", imuOrientationOffset_[0]);
       error += declareAndCheckParameter<double>("ControllerCfg.imu_orientation_offset.pitch", imuOrientationOffset_[1]);
       error += declareAndCheckParameter<double>("ControllerCfg.imu_orientation_offset.roll", imuOrientationOffset_[2]);
@@ -293,6 +340,9 @@ namespace robot_controllers
       error += declareAndCheckParameter<double>("ControllerCfg.init_state.default_joint_angle.ankle_L_Joint", initState["ankle_L_Joint"]);
       error += declareAndCheckParameter<double>("ControllerCfg.control.ankle_joint_damping", ankleJointDamping_);
       error += declareAndCheckParameter<double>("ControllerCfg.control.ankle_joint_torque_limit", ankleJointTorqueLimit_);
+
+      error += declareAndCheckParameter<double>("ControllerCfg.gait.frequencies", robotCfg_.gaitCfg.frequencies);
+      error += declareAndCheckParameter<double>("ControllerCfg.gait.swing_height", robotCfg_.gaitCfg.swing_height);
 
       // Log the result of parameter fetching
       if (error != 0)
@@ -306,17 +356,23 @@ namespace robot_controllers
 
       robotCfg_.print();
 
+      encoderInputSize_ = obsHistoryLength_ * observationSize_;
+
       // Resize vectors.
       actions_.resize(actionsSize_);
       observations_.resize(observationSize_);
+      proprioHistoryVector_.resize(observationSize_ * obsHistoryLength_);
+      encoderOut_.resize(encoderOutputSize_);
       lastActions_.resize(actionsSize_);
+      commands_.resize(commandSize_);
+      scaled_commands_.resize(commandSize_);
 
       // Initialize vectors.
       lastActions_.setZero();
-      commands_.setZero();
-      scaled_commands_.setZero();
       baseLinVel_.setZero();
       basePosition_.setZero();
+      commands_.setZero();
+      scaled_commands_.setZero();
     }
     catch (const std::exception &e)
     {
@@ -336,10 +392,21 @@ namespace robot_controllers
                                                             OrtMemType::OrtMemTypeDefault);
     std::vector<Ort::Value> inputValues;
     std::vector<tensor_element_t> combined_obs;
+    for (const auto &item : encoderOut_)
+    {
+      combined_obs.push_back(item);
+    }
+
     for (const auto &item : observations_)
     {
       combined_obs.push_back(item);
     }
+
+    for (int i = 0; i < scaled_commands_.size(); i++)
+    {
+      combined_obs.push_back(scaled_commands_[i]);
+    }
+
     inputValues.push_back(
         Ort::Value::CreateTensor<tensor_element_t>(memoryInfo, combined_obs.data(), combined_obs.size(),
                                                    policyInputShapes_[0].data(), policyInputShapes_[0].size()));
@@ -392,15 +459,27 @@ namespace robot_controllers
       jointVel(i) = this->getJointStateValue(jointNames_[i], "velocity");
     }
 
+    vector_t gait(4);
+    gait << robotCfg_.gaitCfg.frequencies, 0.5, 0.5, robotCfg_.gaitCfg.swing_height; // trot
+    gait_index_ += 0.02 * gait(0);
+    if (gait_index_ > 1.0)
+    {
+        gait_index_ = 0.0;
+    }
+    vector_t gait_clock(2);
+    gait_clock << sin(gait_index_ * 2 * M_PI), cos(gait_index_ * 2 * M_PI);
+
     vector_t actions(lastActions_);
 
     // Define command scaler and observation vector
-    matrix_t commandScaler = Eigen::DiagonalMatrix<double, 3>(robotCfg_.userCmdCfg.linVel_x,
-                                                              robotCfg_.userCmdCfg.linVel_y,
-                                                              robotCfg_.userCmdCfg.angVel_yaw);
+    vector_t commandScalerVal(commandSize_);
+    commandScalerVal << robotCfg_.userCmdCfg.linVel_x, robotCfg_.userCmdCfg.linVel_y, robotCfg_.userCmdCfg.angVel_yaw;
+    vector_t scaled_commands(commandSize_);
+    for (int i = 0; i < commandSize_; i++) {
+      scaled_commands(i) = commands_(i) * commandScalerVal(i);
+    }
 
     vector_t obs(observationSize_);
-    vector3_t scaled_commands = commandScaler * commands_;
 
     // Populate observation vector
     vector_t jointPos_value = (jointPos - initJointAngles_) * robotCfg_.rlCfg.obsScales.dofPos;
@@ -411,16 +490,36 @@ namespace robot_controllers
         jointPos_value,
         jointVel * robotCfg_.rlCfg.obsScales.dofVel,
         actions,
-        scaled_commands;
+        gait_clock,
+        gait;
+    
+    if (isfirstRecObs_)
+    {
+      int64_t inputSize = std::accumulate(encoderInputShapes_[0].begin(), encoderInputShapes_[0].end(),
+                                          static_cast<int64_t>(1), std::multiplies<int64_t>());
+      proprioHistoryBuffer_.resize(inputSize);
+      for (size_t i = 0; i < obsHistoryLength_; i++)
+      {
+        proprioHistoryBuffer_.segment(i * observationSize_, observationSize_) = obs.cast<tensor_element_t>();
+      }
+      isfirstRecObs_ = false;
+    }
+
+    proprioHistoryBuffer_.head(proprioHistoryBuffer_.size() - observationSize_) = proprioHistoryBuffer_.tail(
+        proprioHistoryBuffer_.size() - observationSize_);
+    proprioHistoryBuffer_.tail(observationSize_) = obs.cast<tensor_element_t>();
 
     // Update observation, scaled commands, and proprioceptive history vector
     for (size_t i = 0; i < obs.size(); i++)
     {
       observations_[i] = static_cast<tensor_element_t>(obs(i));
     }
-    for (size_t i = 0; i < scaled_commands_.size(); i++)
-    {
+    for (size_t i = 0; i < scaled_commands_.size(); i++) {
       scaled_commands_[i] = static_cast<tensor_element_t>(scaled_commands(i));
+    }
+    for (size_t i = 0; i < proprioHistoryBuffer_.size(); i++)
+    {
+      proprioHistoryVector_[i] = static_cast<tensor_element_t>(proprioHistoryBuffer_(i));
     }
 
     // Limit observation range
@@ -429,6 +528,26 @@ namespace robot_controllers
     std::transform(observations_.begin(), observations_.end(), observations_.begin(),
                    [obsMin, obsMax](double x)
                    { return std::max(obsMin, std::min(obsMax, x)); });
+  }
+
+  void SolefootController::computeEncoder() {
+    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtArenaAllocator,
+                                                            OrtMemType::OrtMemTypeDefault);
+    std::vector<Ort::Value> inputValues;
+    inputValues.push_back(Ort::Value::CreateTensor<tensor_element_t>(memoryInfo, proprioHistoryBuffer_.data(),
+                                                                      proprioHistoryBuffer_.size(),
+                                                                      encoderInputShapes_[0].data(),
+                                                                      encoderInputShapes_[0].size()));
+
+    Ort::RunOptions runOptions;
+    std::vector<Ort::Value> outputValues =
+        encoderSessionPtr_->Run(runOptions, encoderInputNames_.data(), inputValues.data(), 1,encoderOutputNames_.data(), 1);
+    
+    for (int i = 0; i < encoderOutputSize_; i++)
+    {
+      encoderOut_[i] = *(outputValues[0].GetTensorMutableData<tensor_element_t>() + i);
+    }
+
   }
 
   void SolefootController::cmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg)

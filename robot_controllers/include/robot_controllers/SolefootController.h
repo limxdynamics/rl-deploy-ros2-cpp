@@ -14,115 +14,6 @@
 #include "limxsdk/pointfoot.h"
 
 namespace robot_controllers {
-
-// Define scalar and vector types for Eigen
-using vector3_t = Eigen::Matrix<double, 3, 1>;
-using vector_t = Eigen::Matrix<double, Eigen::Dynamic, 1>;
-using matrix_t = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>; // Type alias for matrices
-using tensor_element_t = float; // Type alias for tensor elements
-
-// Utility class to measure time intervals
-class TicToc {
-public:
-  TicToc() {
-    tic();
-  }
-
-  void tic() {
-    start = std::chrono::system_clock::now();
-  }
-
-  double toc() {
-    end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    return elapsed_seconds.count() * 1000;
-  }
-
-private:
-  std::chrono::time_point<std::chrono::system_clock> start, end;
-};
-
-// Structure to hold robot configuration settings
-struct RobotCfg {
-  // Control configuration settings
-  struct ControlCfg {
-    double stiffness{0.0};            // Stiffness parameter
-    double damping{0.0};              // Damping parameter
-    double action_scale_pos{0.0};     // Scaling factor for position action
-    double action_scale_vel{0.0};     // Scaling factor for velocity action
-    int decimation{0};                // Decimation factor
-    double user_torque_limit{0.0};    // User-defined torque limit
-
-    // Print control configuration settings
-    void print() {
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "=======start ControlCfg========");
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "stiffness: %f", stiffness);
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "damping: %f", damping);
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "action_scale_pos: %f", action_scale_pos);
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "action_scale_vel: %f", action_scale_vel);
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "decimation: %d", decimation);
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "user_torque_limit: %f", user_torque_limit);
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "=======end ControlCfg========\n");
-    }
-  };
-
-  // Reinforcement learning configuration settings
-  struct RlCfg {
-    // Observation scaling parameters
-    struct ObsScales {
-      double linVel{0.0};            // Linear velocity scaling
-      double angVel{0.0};            // Angular velocity scaling
-      double dofPos{0.0};            // Degree of freedom position scaling
-      double dofVel{0.0};            // Degree of freedom velocity scaling
-
-      // Print observation scaling parameters
-      void print() {
-        RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "=======start ObsScales========");
-        RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "linVel: %f", linVel);
-        RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "angVel: %f", angVel);
-        RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "dofPos: %f", dofPos);
-        RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "dofVel: %f", dofVel);
-        RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "=======end ObsScales========\n");
-      }
-    };
-
-    double clipActions{0.0};       // Action clipping parameter
-    double clipObs{0.0};           // Observation clipping parameter
-    ObsScales obsScales;           // Observation scaling settings
-  };
-
-  // User command configuration settings
-  struct UserCmdCfg {
-    double linVel_x{0.0}; 
-    double linVel_y{0.0}; 
-    double angVel_yaw{0.0}; 
-
-    // Print user command scaling parameters
-    void print() {
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "======= Start User Cmd Scales========");
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "lin_vel_x: %f", linVel_x);
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "lin_vel_y: %f", linVel_y);
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "ang_vel_yaw: %f", angVel_yaw);
-      RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "=======End User Cmd Scales========\n");
-    }
-  };
-
-
-  RlCfg rlCfg;                   // RL configuration settings
-  UserCmdCfg userCmdCfg;         // User command configuration settings
-  std::map<std::string, double> initState;  // Initial state settings
-  ControlCfg controlCfg;         // Control configuration settings
-
-  // Print robot configuration settings
-  void print() {
-    rlCfg.obsScales.print();
-    controlCfg.print();
-    userCmdCfg.print();
-    RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "clipActions: %f", rlCfg.clipActions);
-    RCLCPP_INFO(rclcpp::get_logger("SolefootController"), "clipObs: %f", rlCfg.clipObs);
-  }
-};
-
 /**
  * @brief Class representing the SolefootController.
  */
@@ -154,6 +45,9 @@ private:
   // Compute observations for the controller
   void computeObservation();
 
+  // Compute encoder for the controller
+  void computeEncoder();
+
   // Handle walk mode
   void handleWalkMode();
 
@@ -163,6 +57,12 @@ private:
   // Callback function for command velocity
   void cmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
 
+  // compute gait
+  vector_t handleGait();
+
+  // compute gait clock
+  vector_t handleGaitClock(vector_t &curr_gait);
+
   // Get the robot configuration
   RobotCfg &getRobotCfg() { return robotCfg_; }
 
@@ -170,8 +70,6 @@ private:
   double loopFrequency_; // Control Frequency
 
   int64_t loopCount_;       // Loop count
-  vector3_t commands_;      // Command vector
-  vector3_t scaled_commands_; // Scaled command vector
 
   RobotCfg robotCfg_; // Robot configuration
 
@@ -184,6 +82,7 @@ private:
 
   // ONNX session pointers
   std::unique_ptr<Ort::Session> policySessionPtr_;
+  std::unique_ptr<Ort::Session> encoderSessionPtr_;
 
   // Names and shapes of inputs and outputs for ONNX sessions
   std::vector<std::vector<int64_t>> policyInputShapes_;
@@ -191,16 +90,33 @@ private:
   std::vector<const char *> policyInputNames_;
   std::vector<const char *> policyOutputNames_;
 
+  std::vector<std::vector<int64_t>> encoderInputShapes_;
+  std::vector<std::vector<int64_t>> encoderOutputShapes_;
+  std::vector<const char *> encoderInputNames_;
+  std::vector<const char *> encoderOutputNames_;
+
+  std::vector<tensor_element_t> proprioHistoryVector_;
+  Eigen::Matrix<tensor_element_t, Eigen::Dynamic, 1> proprioHistoryBuffer_;
+
   vector3_t baseLinVel_; // Base linear velocity
   vector3_t basePosition_; // Base position
   vector_t lastActions_; // Last actions
+  int commandSize_;
+  vector_t commands_; // command for solefoot(size=5)
+  vector_t scaled_commands_; // scaled command for solefoot(size=5)
 
   int actionsSize_; // Size of actions
   int observationSize_; // Size of observations
+  int obsHistoryLength_; // Size of history observations
+  int encoderInputSize_, encoderOutputSize_; // Input and output size of encoder
   double imuOrientationOffset_[3]; // IMU orientation offset
 
   std::vector<tensor_element_t> actions_; // Actions
   std::vector<tensor_element_t> observations_; // Observations
+  std::vector<tensor_element_t> encoderOut_;  // Encoder
+  
+  double gait_index_{0.0};
+  bool isfirstRecObs_{true};
 
   vector_t defaultJointAngles_; // Default joint angles
   vector_t initJointAngles_;    // Initial joint angles in standard standing pose
