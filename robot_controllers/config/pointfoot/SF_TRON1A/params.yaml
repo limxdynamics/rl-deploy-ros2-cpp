@@ -15,12 +15,12 @@ robot_hw_node:
         # target angles [rad] when action = 0.0
         default_joint_angle:
           abad_L_Joint: 0.0
-          hip_L_Joint: 0.0
+          hip_L_Joint: 0.13
           knee_L_Joint: 0.0
           ankle_L_Joint: 0.0
 
           abad_R_Joint: 0.0
-          hip_R_Joint: 0.0
+          hip_R_Joint: -0.13
           knee_R_Joint: 0.0
           ankle_R_Joint: 0.0
 
@@ -49,7 +49,7 @@ robot_hw_node:
         observations_size: 36
         obs_history_length: 5
         encoder_output_size: 3
-        commands_size: 3
+        commands_size: 5
 
       gait:
         frequencies: 1.3
