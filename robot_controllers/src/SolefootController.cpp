@@ -473,7 +473,7 @@ namespace robot_controllers
 
     // Define command scaler and observation vector
     vector_t commandScalerVal(commandSize_);
-    commandScalerVal << robotCfg_.userCmdCfg.linVel_x, robotCfg_.userCmdCfg.linVel_y, robotCfg_.userCmdCfg.angVel_yaw;
+    commandScalerVal << robotCfg_.userCmdCfg.linVel_x, robotCfg_.userCmdCfg.linVel_y, robotCfg_.userCmdCfg.angVel_yaw, 1.0, 1.0;
     vector_t scaled_commands(commandSize_);
     for (int i = 0; i < commandSize_; i++) {
       scaled_commands(i) = commands_(i) * commandScalerVal(i);
@@ -562,6 +562,8 @@ namespace robot_controllers
 
     // Set angular z velocity.
     commands_(2) = (msg->angular.z > 1.0 ? 1.0 : (msg->angular.z < -1.0 ? -1.0 : msg->angular.z));
+    commands_(3) = 0.0;
+    commands_(4) = 0.0;
   }
 
 } // namespace
