@@ -23,7 +23,7 @@ find_package(realtime_tools REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(urdf REQUIRED)
-find_package(pointfoot_sdk_lowlevel REQUIRED)
+find_package(limxsdk_lowlevel REQUIRED)
 
 # Add a shared library target
 add_library(${PROJECT_NAME} SHARED
@@ -47,7 +47,7 @@ ament_target_dependencies(${PROJECT_NAME}
   geometry_msgs
   Eigen3
   urdf
-  pointfoot_sdk_lowlevel
+  limxsdk_lowlevel
 )
 
 # Link with onnxruntime library
@@ -86,7 +86,7 @@ ament_export_dependencies(
   realtime_tools
   geometry_msgs
   Eigen3
-  pointfoot_sdk_lowlevel
+  limxsdk_lowlevel
 )
 
 ament_package()
