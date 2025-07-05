@@ -67,7 +67,7 @@
 
     ```Bash
     cd ~/limx_ws/src
-    git clone https://github.com/limxdynamics/pointfoot-sdk-lowlevel.git
+    git clone https://github.com/limxdynamics/limxsdk-lowlevel.git
     ```
     
 - 下载可视化工具

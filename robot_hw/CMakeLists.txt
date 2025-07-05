@@ -16,7 +16,7 @@ find_package(pluginlib REQUIRED)
 find_package(controller_manager REQUIRED)
 find_package(controller_manager_msgs REQUIRED)
 find_package(urdf REQUIRED)
-find_package(pointfoot_sdk_lowlevel REQUIRED)
+find_package(limxsdk_lowlevel REQUIRED)
 
 # Include directories
 include_directories(include)
@@ -34,7 +34,7 @@ ament_target_dependencies(pointfoot_node
   controller_manager
   controller_manager_msgs
   urdf
-  pointfoot_sdk_lowlevel
+  limxsdk_lowlevel
 )
 
 install(TARGETS pointfoot_node

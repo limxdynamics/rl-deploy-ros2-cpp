@@ -13,7 +13,7 @@
   <depend>controller_manager</depend>
   <depend>controller_manager_msgs</depend>
   <depend>urdf</depend>
-  <build_depend>pointfoot_sdk_lowlevel</build_depend>
+  <build_depend>limxsdk_lowlevel</build_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
   <export>

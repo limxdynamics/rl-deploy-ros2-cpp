@@ -16,7 +16,7 @@
     <depend>urdf</depend>
     <depend>geometry_msgs</depend>
     <build_depend>eigen</build_depend>
-    <depend>pointfoot_sdk_lowlevel</depend>
+    <depend>limxsdk_lowlevel</depend>
     <export>
       <build_type>ament_cmake</build_type>
       <controller_interface plugin="${prefix}/robot_controllers_plugin.xml"/>
