@@ -91,11 +91,6 @@
     git clone -b feature/foxy https://github.com/limxdynamics/rl-deploy-ros2-cpp.git
     ```
     
-- ```Bash
-    cd ~/limx_ws/src
-    git clone https://github.com/limxdynamics/robot-visualization.git
-    ```
-    
 - 编译工程：
     ```Bash
     cd ~/limx_ws
